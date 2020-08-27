@@ -1,6 +1,4 @@
-#include <iostream>
-#include <glad.h>
-#include <glfw3.h>
+
 /*写在最开始的一个比喻
 opengl就是一个灌肠加工厂。
 最终你需要输出许多各种各样的灌肠给厨师做菜。
@@ -42,22 +40,30 @@ object属性的数据存放在哪里？
 直接编译这个源代码，就能等待使用。
 shader相当于一个已经生产好的灌肠，不用经过漏斗，直接送给下一步就可以。
 */
+#include <iostream>
+#include <glad.h>
+#include <glfw3.h>
+#include "Shader.h"
+#include "stb_image.h"
+#include "Texture.h"
+#include <sstream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include "Camera.h"
+#include "VAO.h"
 
-//Vertex shader
-const char* vertexShaderSource = "#version 330 core\n"
-"layout (location=0) in vec3 aPos;\n"
-"void main(){\n"
-"gl_Position=vec4(aPos.x,aPos.y,aPos.z,1.0);\n"
-"}\0";
-
-const char* fragmentShaderSource = "#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main(){\n"
-"FragColor=vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\0";
-
+#define PI 3.1415927f
 void framebuffer_size_callback(GLFWwindow*, int, int);
+void mouse_callback(GLFWwindow*, double, double);
+void mousebutton_callback(GLFWwindow*, int, int, int);
 void processInput(GLFWwindow* window);
+float deltaTime = 0.0f;
+float lastTime = 0.0f;
+bool firstMouse=true;
+bool rightButtonPressed;
+double lastX = 0, lastY = 0, xoffset = 0, yoffset = 0.0,yaw=-90,pitch=0.0;
+Camera* currentCam;
 int main(void)
 {
 	//第一步就是初始化context，根据本机的情况和使用的opengl版本
@@ -65,9 +71,11 @@ int main(void)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	stbi_set_flip_vertically_on_load(true);
 	//一些前提hint设定好了，就建立window，用来装到current context里，所以每个window都是context
 	//但是用glfwMakeCurrentContext函数来决定我们现在调整的是哪个window
-	GLFWwindow* window = glfwCreateWindow(800, 800, "LearnOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -81,116 +89,144 @@ int main(void)
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
-
 	//定义窗口内视图大小，左下角和右上角的屏幕坐标
-	glViewport(0, 0, 800, 800);
+	glViewport(0, 0, 800, 600);
 
 	//在开始loop之前设定好callback
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetMouseButtonCallback(window, mousebutton_callback);
+
+	//准备变换矩阵
+
+	glm::mat4 view(1.0f);
+	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+
+	Camera cam(glm::vec3(0.0f, 0.0f, 3.0f));
+	currentCam = &cam;
+
+	glm::mat4 projection(1.0f);
+	projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
 	//准备阶段
+	//layout
+	VertexLayout layout;
+	layout.push<float>(3u);
+	layout.push<float>(2u);
 	//1.准备顶点数据
 	float vertices[] = {
-		 0.5f,  0.5f, 0.0f,  // top right
-		 0.5f, -0.5f, 0.0f,  // bottom right
-		-0.5f, -0.5f, 0.0f,  // bottom left
-		-0.5f,  0.5f, 0.0f,   // top left 
-		1.0f,-0.5f,0.0f
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+	 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+	 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 	};
-	unsigned int indices[] = {  // note that we start from 0!
-	1,2, 3,   // first triangle
-	0, 1, 4    // second triangle
+
+	glm::vec3 cubePositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
+	//unsigned int indices[] = {  // note that we start from 0!
+	//	0,1, 2,  // first triangle
+	//	2,3,0
+	//};
+
+	//准备texture0
+	Texture texture0("container.jpg", GL_TEXTURE0);
+	//准备texture1
+	Texture texture1("awesomeface.png", GL_TEXTURE1);
+
+	Shader shaderProgram("shader.shader");
 	//准备一个VAO
-	unsigned int VAO;
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
+	VAO vao(shaderProgram,layout);
+	vao.useShader().setInt("TEXTURE0", 0);
+	vao.useShader().setInt("TEXTURE1", 1);
 
 	unsigned int VBO;
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	unsigned int EBO;
-	glGenBuffers(1, &EBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),indices,GL_STATIC_DRAW);
-
-	//2准备vertexAttributePointer
-	//对于每个vertexAttribute，为了方便遍历，opengl需要知道
-	//1.现在是在遍历哪个属性(index)
-	//2.这个属性从哪开始，我第一个去哪里(pointer)
-	//3.这个属性多大，一次性读多长的内存(size)
-	//4.这个属性本质是什么，把这段内存当作什么看待(type)
-	//5.这个属性在内存里两两间隔多大，方便我直接跳到下一个内存读取(stride)
-	//6.这个属性是否被归一化，我要不要直接用这个数据还是自己处理一下
-	glVertexAttribPointer(0,3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	//2.准备shader和shader program
-	//2.1准备vertexshader
-	unsigned int vertexShader;
-	vertexShader=glCreateShader(GL_VERTEX_SHADER);
-	//这里第三个参数类型是 const char* const*,意思是一个指向字符串常量指针a的指针b
-	//第一个const表示指针a指向的字符串常量不可更改
-	//第二个const表示指针b指向的指针a不可更改
-	//可以更改的是指针b，可以使其指向另一个字符串常量指针
-	//如果要限制指针b的指向，应该增加第三个const修饰符，如下
-	//const char* const* const
-	//注意，const char* const*实际上就是 char **,字符指针的指针
-	//因此vertexshadersource已经是字符指针，只需要再取一次引用即可。
-	glShaderSource(vertexShader, 1, &vertexShaderSource,NULL);
-	glCompileShader(vertexShader);
-
-	int success;
-	char infolog[512];
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vertexShader, 512, NULL, infolog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infolog << std::endl;
-	}
-
-	//2.2准备fragmentShader
-	unsigned int fragmentShader;
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infolog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infolog << std::endl;
-	}
-
-	//2.3准备shaderProgram
-	unsigned int shaderProgram=glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infolog);
-		std::cout << "ERROR::PROGRAM::LINKING_FAILED\n" << infolog << std::endl;
-	}
-	glUseProgram(shaderProgram);
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-
-
+	vao.bind();
+	/*
+		unsigned int EBO;
+		glGenBuffers(1, &EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),indices,GL_STATIC_DRAW);*/
 	while (!glfwWindowShouldClose(window)) {
+		float currentTime = glfwGetTime();
+		deltaTime = currentTime - lastTime;
+		lastTime = currentTime;
 		//input
 		processInput(window);
 
 		//rendering command
+		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		const float radius = 10.0f;
+		/*auto x = sin(1.3*glfwGetTime())*radius;
+		auto y = sin(1.1*glfwGetTime() + PI / 4)*radius;
+		auto z = cos(glfwGetTime())*radius;
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,0);
+		cam.PlaceAt(glm::vec3(x, y, z));*/
+		//对每个VAO进行切换
+		view = currentCam->getViewMatrix();
+		for (int i = 0; i < 10; i++) {
+			glm::mat4 model(1.0f);
+			model = glm::translate(model, cubePositions[i]);
+			model = glm::rotate(model, (float)glfwGetTime()* glm::radians((float)i+1)*20, glm::vec3(1.0f, 0.3f, 0.5f));
+			shaderProgram.setMatrix("model", glm::value_ptr(model));
+			shaderProgram.setMatrix("view", glm::value_ptr(view));
+			shaderProgram.setMatrix("projection", glm::value_ptr(projection));
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
+		//
+
 
 		//check and call events and swap the buffers
 		glfwSwapBuffers(window);
@@ -206,10 +242,71 @@ void framebuffer_size_callback(GLFWwindow*, int width, int height)
 	std::cout << "windows size changing" << std::endl;
 }
 
+void mouse_callback(GLFWwindow * window, double xpos, double ypos)
+{
+	if (rightButtonPressed)
+	{
+		if (firstMouse)
+		{
+			lastX = xpos;
+			lastY = ypos;
+			firstMouse = false;
+		}
+		xoffset = xpos - lastX;
+		yoffset = lastY - ypos;
+		lastX = xpos;
+		lastY = ypos;
+
+		float sensitivity = 0.35f;
+		xoffset *= sensitivity;
+		yoffset *= sensitivity;
+
+		yaw += xoffset;
+		pitch += yoffset;
+
+		if (pitch > 89.0f)
+			pitch = 89.0f;
+		if (pitch < -89.0f)
+			pitch = -89.0f;
+
+		glm::vec3 direction;
+		direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+		direction.y = sin(glm::radians(pitch));
+		direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+		currentCam->LookAtDir(direction);
+		currentCam->Up(0.0f, 1.0f, 0.0f);
+	}
+}
+
+void mousebutton_callback(GLFWwindow * window, int button, int action, int mods)
+{
+	rightButtonPressed = button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS;
+	firstMouse = rightButtonPressed ? firstMouse : true;
+}
+
 void processInput(GLFWwindow * window)
 {
 	if (glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
+	}
+	bool shiftPress = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS;
+	float cameraSpeed = (shiftPress?5.0:2.5f)*deltaTime;
+	if (glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS|| glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	{
+		currentCam->Translate(currentCam->forward()*cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	{
+		currentCam->Translate(-currentCam->forward()*cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+		currentCam->Translate(-currentCam->right()*cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+		currentCam->Translate(currentCam->right()*cameraSpeed);
 	}
 }
