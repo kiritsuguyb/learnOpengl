@@ -39,6 +39,9 @@
     <ClCompile Include="src\VertexLayout.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\Light.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Shader.h">
@@ -57,6 +60,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\VertexLayout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Light.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

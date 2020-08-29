@@ -93,6 +93,26 @@ void Shader::setMatrix(const std::string & name, const GLfloat * value) const
 	glUniformMatrix4fv(getUniformLocation(name),1,GL_FALSE,value);
 }
 
+void Shader::setVec3(const std::string & name, float x, float y, float z) const
+{
+	glUniform3f(getUniformLocation(name), x, y, z);
+}
+
+void Shader::setVec3(const std::string & name, const GLfloat * value) const
+{
+	glUniform3fv(getUniformLocation(name),1,value);
+}
+
+void Shader::setVec4(const std::string & name, float x, float y, float z, float w) const
+{
+	glUniform4f(getUniformLocation(name), x, y, z, w);
+}
+
+void Shader::setVec4(const std::string & name, const GLfloat * value) const
+{
+	glUniform3fv(getUniformLocation(name),1,value);
+}
+
 GLint Shader::getUniformLocation(const std::string &name)const
 {
 	if (locationmap.find(name) != locationmap.end())

@@ -90,6 +90,11 @@ glm::vec3 Camera::right()
 	return glm::normalize(rightDir);
 }
 
+glm::vec3 Camera::getPos() const
+{
+	return position;
+}
+
 void Camera::update(const glm::vec3 & pos, const glm::vec3 & lookat, const glm::vec3 & up)
 {
 	position = pos;

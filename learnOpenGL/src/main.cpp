@@ -52,6 +52,7 @@ shader相当于一个已经生产好的灌肠，不用经过漏斗，直接送给下一步就可以。
 #include <glm/gtc/type_ptr.hpp>
 #include "Camera.h"
 #include "VAO.h"
+#include "Light.h"
 
 #define PI 3.1415927f
 void framebuffer_size_callback(GLFWwindow*, int, int);
@@ -84,6 +85,7 @@ int main(void)
 	}
 	glfwMakeContextCurrent(window);//!*this should happen before initialize glad
 	//在这个context下面初始化glad，拉取opengl的函数。
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
@@ -100,7 +102,6 @@ int main(void)
 	//准备变换矩阵
 
 	glm::mat4 view(1.0f);
-	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
 	Camera cam(glm::vec3(0.0f, 0.0f, 3.0f));
 	currentCam = &cam;
@@ -112,52 +113,53 @@ int main(void)
 	//layout
 	VertexLayout layout;
 	layout.push<float>(3u);
+	layout.push<float>(3u);
 	layout.push<float>(2u);
 	//1.准备顶点数据
 	float vertices[] = {
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+		// positions          // normals           // texture coords
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
 
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
 
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
 
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
 
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
+		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
 	};
-
 	glm::vec3 cubePositions[] = {
 		glm::vec3(0.0f,  0.0f,  0.0f),
 		glm::vec3(2.0f,  5.0f, -15.0f),
@@ -175,28 +177,74 @@ int main(void)
 	//	2,3,0
 	//};
 
-	//准备texture0
-	Texture texture0("container.jpg", GL_TEXTURE0);
-	//准备texture1
-	Texture texture1("awesomeface.png", GL_TEXTURE1);
 
-	Shader shaderProgram("shader.shader");
+	Shader lightShader("light.shader");
 	//准备一个VAO
-	VAO vao(shaderProgram,layout);
-	vao.useShader().setInt("TEXTURE0", 0);
-	vao.useShader().setInt("TEXTURE1", 1);
+	VAO light(lightShader, layout);
+	light.useShader().setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+	
 
 	unsigned int VBO;
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	vao.bind();
+	light.bind();
+
+	//准备texture0
+	Texture texture0("container2.png", GL_TEXTURE0);
+	//准备texture1
+	Texture texture1("container2_specular.png", GL_TEXTURE1);
+
+	Shader objectShader("object.shader");
+	VAO liObject(objectShader, layout);
+	liObject.useShader().setVec3("objectColor", 1.0f, 0.5f, 0.31f);
+	liObject.useShader().setVec3("lightColor", 1.0f, 1.0f, 1.0f);
+	liObject.useShader().setInt("material.diffuse", 0);
+	liObject.useShader().setInt("material.specular",1);
+	liObject.bind();
 	/*
 		unsigned int EBO;
 		glGenBuffers(1, &EBO);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),indices,GL_STATIC_DRAW);*/
+/*
+	glm::vec3 pos(-1.2f, -1.0f, -2.0f);
+	glm::mat4 mod(1.0f);
+	mod = glm::translate(mod, pos);
+
+	auto TImod = glm::transpose(glm::inverse(mod));
+	auto itmod = glm::inverse(glm::transpose(mod));
+	std::cout << "mod matrix!!:\n";
+	for (int i=0;i<4;i++)
+	{
+		for (int j=0;j<4;j++)
+		{
+			std::cout << mod[i][j] << "  ";
+		}
+		std::cout << "\n";
+
+	}
+	std::cout << "ITmod matrix!!:\n";
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			std::cout << itmod[i][j] << "  ";
+		}
+		std::cout << "\n";
+
+	}
+	std::cout << "TImod matrix!!:\n";
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			std::cout << TImod[i][j] << "  ";
+		}
+		std::cout << "\n";
+
+	}*/
 	while (!glfwWindowShouldClose(window)) {
 		float currentTime = glfwGetTime();
 		deltaTime = currentTime - lastTime;
@@ -208,24 +256,64 @@ int main(void)
 		glEnable(GL_DEPTH_TEST);
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		const float radius = 10.0f;
-		/*auto x = sin(1.3*glfwGetTime())*radius;
-		auto y = sin(1.1*glfwGetTime() + PI / 4)*radius;
-		auto z = cos(glfwGetTime())*radius;
+		const float radius = 2.0f;
+		auto x = sin(5*glfwGetTime())*radius;
+		//auto y = sin(1.1*glfwGetTime() + PI / 4)*radius;
+		auto z = cos(5*glfwGetTime())*radius;
 
-		cam.PlaceAt(glm::vec3(x, y, z));*/
-		//对每个VAO进行切换
+		//cam.PlaceAt(glm::vec3(x, y, z));*/
+		//更新相机位置
 		view = currentCam->getViewMatrix();
-		for (int i = 0; i < 10; i++) {
-			glm::mat4 model(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			model = glm::rotate(model, (float)glfwGetTime()* glm::radians((float)i+1)*20, glm::vec3(1.0f, 0.3f, 0.5f));
-			shaderProgram.setMatrix("model", glm::value_ptr(model));
-			shaderProgram.setMatrix("view", glm::value_ptr(view));
-			shaderProgram.setMatrix("projection", glm::value_ptr(projection));
+		//画出光源
+		//光源位置
+		glm::vec3 lightPos(x, 1.5f, z);
+		glm::mat4 lightModel(1.0f);
+		lightModel = glm::translate(lightModel, lightPos);
+		lightModel = glm::scale(lightModel, glm::vec3(0.2f));
+		//使用光源对象
+		light.bind();
+		//设置该对象shader数据
+		light.useShader().setMatrix("model", glm::value_ptr(lightModel));
+		light.useShader().setMatrix("view", glm::value_ptr(view));
+		light.useShader().setMatrix("projection", glm::value_ptr(projection));
+		glm::vec3 lightColor;
+		lightColor.x = sin(glfwGetTime() * 1.0f)*0.5f + 0.5f;
+		lightColor.y = sin(glfwGetTime() * 0.4f)*0.5f + 0.5f;
+		lightColor.z = sin(glfwGetTime() * 0.7f)*0.5f + 0.5f;
+		light.useShader().setVec3("lightColor",glm::value_ptr(lightColor) );
+		//drawcall绘制
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		//画出物体
+		//位置
+		//使用物体对象
+		liObject.bind();
+		//设置该对象shader数据
+		liObject.useShader().setMatrix("view", glm::value_ptr(view));
+		liObject.useShader().setMatrix("projection", glm::value_ptr(projection));
+		liObject.useShader().setVec3("viewPos", glm::value_ptr(currentCam->getPos()));
+		liObject.useShader().setVec3("material.ambient", 1.0f, 0.5f, 0.31f);
+		liObject.useShader().setVec3("material.diffuse", 1.0f, 0.5f, 0.31f);
+		liObject.useShader().setVec3("material.specular", 0.5f, 0.5f, 0.5f);
+		liObject.useShader().setFloat("material.shininess", 128.0f);
+		liObject.useShader().setVec3("light.position", glm::value_ptr(lightPos));
+		auto diffuse = lightColor * 0.5f;
+		auto ambient = lightColor * 0.2f;
+		Light_Directional dirlight(glm::vec3(-0.2f, -1.0f, -0.3f), ambient, diffuse);
+		dirlight.applyToShader(liObject.useShader());
+		for (int i=0;i<10;i++)
+		{
+			glm::mat4 objectModel(1.0f);
+			float angle = glfwGetTime() * 10.0f*(i + 1);
+			objectModel = glm::rotate(objectModel, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			objectModel = glm::translate(objectModel, cubePositions[i]);
+			liObject.useShader().setMatrix("model", glm::value_ptr(objectModel));
+			auto itobjectmodel = glm::inverse(glm::transpose(objectModel));
+			liObject.useShader().setMatrix("itmodel", glm::value_ptr(itobjectmodel));
+			//drawcall绘制
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
-		//
+		
 
 
 		//check and call events and swap the buffers
