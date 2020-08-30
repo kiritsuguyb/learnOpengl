@@ -65,6 +65,9 @@ bool firstMouse=true;
 bool rightButtonPressed;
 double lastX = 0, lastY = 0, xoffset = 0, yoffset = 0.0,yaw=-90,pitch=0.0;
 Camera* currentCam;
+float lightIntensity = 1.0f;
+float maxDistance = 32.0f;
+
 int main(void)
 {
 	//第一步就是初始化context，根据本机的情况和使用的opengl版本
@@ -266,6 +269,12 @@ int main(void)
 		view = currentCam->getViewMatrix();
 		//画出光源
 		//光源位置
+		glm::vec3 lightColor(1.0f,1.0f,1.0f);
+		/*lightColor.x = sin(glfwGetTime() * 1.0f)*0.5f + 0.5f;
+		lightColor.y = sin(glfwGetTime() * 0.4f)*0.5f + 0.5f;
+		lightColor.z = sin(glfwGetTime() * 0.7f)*0.5f + 0.5f;*/
+		auto diffuse = lightColor * 0.5f;
+		auto ambient = lightColor * 0.2f;
 		glm::vec3 lightPos(x, 1.5f, z);
 		glm::mat4 lightModel(1.0f);
 		lightModel = glm::translate(lightModel, lightPos);
@@ -276,11 +285,7 @@ int main(void)
 		light.useShader().setMatrix("model", glm::value_ptr(lightModel));
 		light.useShader().setMatrix("view", glm::value_ptr(view));
 		light.useShader().setMatrix("projection", glm::value_ptr(projection));
-		glm::vec3 lightColor;
-		lightColor.x = sin(glfwGetTime() * 1.0f)*0.5f + 0.5f;
-		lightColor.y = sin(glfwGetTime() * 0.4f)*0.5f + 0.5f;
-		lightColor.z = sin(glfwGetTime() * 0.7f)*0.5f + 0.5f;
-		light.useShader().setVec3("lightColor",glm::value_ptr(lightColor) );
+		light.useShader().setVec3("lightColor",glm::value_ptr(lightColor*lightIntensity) );
 		//drawcall绘制
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -297,15 +302,14 @@ int main(void)
 		liObject.useShader().setVec3("material.specular", 0.5f, 0.5f, 0.5f);
 		liObject.useShader().setFloat("material.shininess", 128.0f);
 		liObject.useShader().setVec3("light.position", glm::value_ptr(lightPos));
-		auto diffuse = lightColor * 0.5f;
-		auto ambient = lightColor * 0.2f;
-		Light_Directional dirlight(glm::vec3(-0.2f, -1.0f, -0.3f), ambient, diffuse);
-		dirlight.applyToShader(liObject.useShader());
+		//Light_Spot light(currentCam->getPos(),currentCam->getForward(),ambient,diffuse,12.0,20.0,maxDistance,0.01f, lightIntensity);
+		Light_Point light(lightPos,ambient, diffuse,maxDistance, 0.01f, lightIntensity);
+		light.applyToShader(liObject.useShader());
 		for (int i=0;i<10;i++)
 		{
 			glm::mat4 objectModel(1.0f);
 			float angle = glfwGetTime() * 10.0f*(i + 1);
-			objectModel = glm::rotate(objectModel, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			//objectModel = glm::rotate(objectModel, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 			objectModel = glm::translate(objectModel, cubePositions[i]);
 			liObject.useShader().setMatrix("model", glm::value_ptr(objectModel));
 			auto itobjectmodel = glm::inverse(glm::transpose(objectModel));
@@ -381,20 +385,42 @@ void processInput(GLFWwindow * window)
 	}
 	bool shiftPress = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS;
 	float cameraSpeed = (shiftPress?5.0:2.5f)*deltaTime;
-	if (glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS|| glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	if (glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS)
 	{
 		currentCam->Translate(currentCam->forward()*cameraSpeed);
 	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS )
 	{
 		currentCam->Translate(-currentCam->forward()*cameraSpeed);
 	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
 		currentCam->Translate(-currentCam->right()*cameraSpeed);
 	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		currentCam->Translate(currentCam->right()*cameraSpeed);
+	}
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	{
+		lightIntensity += 0.1f;
+		std::cout << "intensity:  " << lightIntensity << "\n";
+	}
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	{
+		lightIntensity -= 0.1f;
+		lightIntensity = lightIntensity > 0 ? lightIntensity : 0;
+		std::cout << "intensity:  " << lightIntensity << "\n";
+	}
+	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	{
+		maxDistance += 2.0f;
+		std::cout << "maxDistance:  " << maxDistance << "\n";
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	{
+		maxDistance -= 2.0f;
+		maxDistance = maxDistance > 0 ? maxDistance : 0;
+		std::cout << "maxDistance:  " << maxDistance << "\n";
 	}
 }

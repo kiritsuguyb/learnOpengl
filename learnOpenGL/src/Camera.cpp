@@ -95,6 +95,11 @@ glm::vec3 Camera::getPos() const
 	return position;
 }
 
+glm::vec3 Camera::getForward() const
+{
+	return lookDir;
+}
+
 void Camera::update(const glm::vec3 & pos, const glm::vec3 & lookat, const glm::vec3 & up)
 {
 	position = pos;

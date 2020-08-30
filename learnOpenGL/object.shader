@@ -27,11 +27,37 @@ struct Material{
     float shininess;
 };
 struct Light_Directional{
+    float intensity;
     vec3 direction;
 
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
+};
+struct Light_Point{
+    float intensity;
+    vec3 position;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float k;
+    float minIntensity;
+    float maxDistance;
+};
+struct Light_Spot{
+    vec3 direction;
+    vec3 position;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float intensity;
+    float cutoff;
+    float outterCutoff;
+    float k;
+    float minIntensity;
+    float maxDistance;
 };
 
 out vec4 FragColor;
@@ -44,20 +70,29 @@ uniform vec3 objectColor;
 uniform vec3 lightColor;
 uniform vec3 viewPos;
 uniform Material material;
-uniform Light_Directional lightDirectional;
+uniform Light_Spot light;
 
 void main(){
-    vec3 ambient=lightDirectional.ambient*texture(material.diffuse,Texcoord).xyz;
+    float lightdist=length(light.position-worldPos);
+    float attenuation=1.0f/(1.0f+light.k*pow(lightdist,2.0f))/(1-light.minIntensity)-light.minIntensity;
+    vec3 ambient=light.ambient*texture(material.diffuse,Texcoord).xyz;
     
-    vec3 lightDir=normalize(-lightDirectional.direction);
+    vec3 lightDir=light.position-worldPos;
+    lightDir=normalize(lightDir);
     float diff=max(dot(lightDir,Normal),0.0f);
-    vec3 diffuse=diff*lightDirectional.diffuse*texture(material.diffuse,Texcoord).xyz;
+    vec3 diffuse=diff*light.diffuse*texture(material.diffuse,Texcoord).xyz;
 
     vec3 reflectDir=reflect(-lightDir,Normal);
     vec3 viewDir=normalize(viewPos-worldPos);
     float spec=pow(max(dot(viewDir,reflectDir),0.0f),material.shininess);
-    vec3 specular=spec*lightDirectional.specular*texture(material.specular,Texcoord).xyz;
-
-    vec3 result=diffuse+ambient+specular;
-    FragColor=vec4(result,1.0f);
+    vec3 specular=spec*light.specular*texture(material.specular,Texcoord).xyz;
+    
+    ambient  *= attenuation*light.intensity; 
+    diffuse  *= attenuation*light.intensity;
+    specular *= attenuation*light.intensity; 
+    //float theta=dot(normalize(light.direction),-lightDir);
+    //float cutoff_atten=clamp((theta-light.outterCutoff)/(light.cutoff-light.outterCutoff),0.0f,1.0f);
+    vec3 result=ambient+diffuse+specular;
+    //result+=(diffuse+specular)*cutoff_atten;
+    FragColor=vec4(attenuation,attenuation,attenuation,1.0f);
 }
