@@ -65,7 +65,7 @@ bool firstMouse=true;
 bool rightButtonPressed;
 double lastX = 0, lastY = 0, xoffset = 0, yoffset = 0.0,yaw=-90,pitch=0.0;
 Camera* currentCam;
-float lightIntensity = 1.0f;
+float lightIntensity = 10.0f;
 float maxDistance = 32.0f;
 
 int main(void)
@@ -274,7 +274,7 @@ int main(void)
 		lightColor.y = sin(glfwGetTime() * 0.4f)*0.5f + 0.5f;
 		lightColor.z = sin(glfwGetTime() * 0.7f)*0.5f + 0.5f;*/
 		auto diffuse = lightColor * 0.5f;
-		auto ambient = lightColor * 0.2f;
+		auto ambient = lightColor * 0.3f;
 		glm::vec3 lightPos(x, 1.5f, z);
 		glm::mat4 lightModel(1.0f);
 		lightModel = glm::translate(lightModel, lightPos);
@@ -302,8 +302,8 @@ int main(void)
 		liObject.useShader().setVec3("material.specular", 0.5f, 0.5f, 0.5f);
 		liObject.useShader().setFloat("material.shininess", 128.0f);
 		liObject.useShader().setVec3("light.position", glm::value_ptr(lightPos));
-		//Light_Spot light(currentCam->getPos(),currentCam->getForward(),ambient,diffuse,12.0,20.0,maxDistance,0.01f, lightIntensity);
-		Light_Point light(lightPos,ambient, diffuse,maxDistance, 0.01f, lightIntensity);
+		Light_Spot light(currentCam->getPos(),currentCam->getForward(),ambient,diffuse,12.0,20.0,maxDistance,0.01f, lightIntensity);
+		//Light_Point light(currentCam->getPos(),ambient, diffuse,maxDistance, 0.01f, lightIntensity);
 		light.applyToShader(liObject.useShader());
 		for (int i=0;i<10;i++)
 		{

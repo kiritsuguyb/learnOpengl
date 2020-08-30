@@ -90,9 +90,9 @@ void main(){
     ambient  *= attenuation*light.intensity; 
     diffuse  *= attenuation*light.intensity;
     specular *= attenuation*light.intensity; 
-    //float theta=dot(normalize(light.direction),-lightDir);
-    //float cutoff_atten=clamp((theta-light.outterCutoff)/(light.cutoff-light.outterCutoff),0.0f,1.0f);
-    vec3 result=ambient+diffuse+specular;
-    //result+=(diffuse+specular)*cutoff_atten;
-    FragColor=vec4(attenuation,attenuation,attenuation,1.0f);
+    float theta=dot(normalize(light.direction),-lightDir);
+    float cutoff_atten=clamp((theta-light.outterCutoff)/(light.cutoff-light.outterCutoff),0.0f,1.0f);
+    vec3 result=ambient;
+    result+=(diffuse+specular)*cutoff_atten;
+    FragColor=vec4(result,1.0f);
 }
